@@ -1,0 +1,329 @@
+<!doctype html>
+<html lang="en">
+
+	<head>
+		<meta charset="utf-8">
+
+		<link rel="stylesheet" href="css/reveal.css">
+		<link rel="stylesheet" href="css/theme/black.css" id="theme">
+
+		<!-- Code syntax highlighting -->
+		<link rel="stylesheet" href="lib/css/zenburn.css">
+		<link rel="stylesheet" href = "http://slidifylibraries2.googlecode.com/git/inst/libraries/widgets/bootstrap/css/bootstrap.css">
+		<!-- Printing and PDF exports -->
+		<script>
+			var link = document.createElement( 'link' );
+			link.rel = 'stylesheet';
+			link.type = 'text/css';
+			link.href = window.location.search.match( /print-pdf/gi ) ? 'css/print/pdf.css' : 'css/print/paper.css';
+			document.getElementsByTagName( 'head' )[0].appendChild( link );
+		</script>
+
+		<!--[if lt IE 9]>
+		<script src="lib/js/html5shiv.js"></script>
+		<![endif]-->
+		<style>
+		.reveal h1, .reveal h2, .reveal h3, .reveal h4, .reveal h5, .reveal h6 {
+			text-transform: none;
+		}
+
+		.reveal li, .reveal td, .reveal th {
+			font-size: smaller;
+		}
+		</style>
+	</head>
+
+
+	<body>
+		<div class="reveal">
+			<div class="slides">
+
+        <section>
+          <h1>Transactional Emails</h1>
+          <h3>Current state of TMS and future plans</h3>
+          <h5>Engineering presentation</h5>
+
+					<blockquote>
+					Lukasz Lysik<br />
+					llysik@opentable.com
+					</blockquote>
+        </section>
+
+				<section>
+					<h3>Presentation plan</h3>
+					<ul>
+						<li>Emails processing</li>
+						<li>Event dispatching process</li>
+						<li>Rule engine</li>
+				</section>
+
+				<section>
+					<h2>Emails processing</h2>
+				</section>
+
+				<section>
+					<h3>Emails processing (async)</h3>
+					<img data-src="images/tms_now.png" />
+				</section>
+
+				<section>
+					<h3>Emails processing - accepted ticket</h3>
+					<pre style="width: 100%"><code style="max-height: 600px;">{
+    href: "http://tms-sc.otenv.com/v1/tickets/5602f01735e511ecd84b012f",
+    id: "5602f01735e511ecd84b012f",
+    state: "Accepted",
+    open: true,
+    errorLog: null,
+    log: [ ... ],
+    transitions: {
+        accepted: "2015-09-23T18:31:51.5710000Z",
+    },
+    composer: "Make Anonymous (v1)",
+    startingData: {
+        href: "http://tms-sc.otenv.com/v1/tickets/5602f01735e511ecd84b012f/starting-data"
+    }
+}</code></pre>
+				</section>
+
+				<section>
+					<h3>Emails processing - composed ticket</h3>
+					<pre style="width: 100%"><code style="max-height: 600px;">{
+    href: "http://tms-sc.otenv.com/v1/tickets/5602f01735e511ecd84b012f",
+    id: "5602f01735e511ecd84b012f",
+    state: "Composed",
+    open: true,
+    errorLog: null,
+    log: [ ... ],
+    transitions: {
+        accepted: "2015-09-23T18:31:51.5710000Z",
+        composed: "2015-09-23T18:32:42.2340000Z",
+    },
+    composer: "Make Anonymous (v1)",
+    startingData: {
+        href: "http://tms-sc.otenv.com/v1/tickets/5602f01735e511ecd84b012f/starting-data"
+    },
+    artifacts: [{
+        href: "http://tms-sc.otenv.com/v1/artifacts/5602f01865e0c01de461a343"
+    }]
+}</code></pre>
+				</section>
+
+				<section>
+					<h3>Emails processing - sent ticket</h3>
+					<pre style="width: 100%"><code style="max-height: 600px;">{
+    href: "http://tms-sc.otenv.com/v1/tickets/5602f01735e511ecd84b012f",
+    id: "5602f01735e511ecd84b012f",
+    state: "Sent",
+    open: false,
+    errorLog: null,
+    log: [ ... ],
+    transitions: {
+        accepted: "2015-09-23T18:31:51.5710000Z",
+        composed: "2015-09-23T18:32:42.2340000Z",
+        sent: "2015-09-23T18:33:11.5230000Z"
+    },
+    composer: "Make Anonymous (v1)",
+    startingData: {
+        href: "http://tms-sc.otenv.com/v1/tickets/5602f01735e511ecd84b012f/starting-data"
+    },
+    artifacts: [{
+        href: "http://tms-sc.otenv.com/v1/artifacts/5602f01865e0c01de461a343"
+    }]
+}</code></pre>
+				</section>
+
+				<section>
+					<h2>Event dispatching process</h2>
+				</section>
+
+				<section>
+					<h3>Event dispatching process</h3>
+					<img src="images/tms_dispatching.png" style="width: 100%" />
+				</section>
+
+				<section>
+					<h3>Event dispatching process - example (DFF)</h3>
+					<pre style="width: 100%"><code style="max-height: 600px">rule "Schedule DFF email"
+    on
+        Reservation_v1
+    when
+        in([Event.ReservationState],2,5,7)
+        in([Event.LanguageCode],'en-US','ja-JP','de-DE','en-GB')
+        [ReservationUser.DiningFormOptIn]
+        not [ReservationUser.IsConcierge]
+        areInOrder([RestaurantMetro.DffStartDate],[Event.ReservationDate])
+        [ReservationPartner.DffEmailOn]
+        not isOnList([Event.Region],'DFBRestIDExclusionList',[Event.RestaurantId])
+        not isOnList([Event.Region],'DFBRestRefIDExclusionList',[Event.RestaurantId])
+        not isOnList([Event.Region],'DFBPartnerIDExclusionList',[Reservation.PartnerId])
+        not isOnList([Event.Region],'DFBRefIDExclusionList',[Reservation.ReferrerId])
+    then
+        scheduleDffEmail([Event.ReservationId],[Event.ReservationDate],
+            2,'12:00',[Event.UniqueId])
+end</code></pre>
+				</section>
+
+				<section>
+					<h3>Event dispatching process - example (DFF)</h3>
+					<pre style="width: 100%"><code style="max-height: 600px">rule "Send DFF from FMN - test mode"
+    on
+        ForgetMeNot_v1
+    when
+        [Event.ComposerName] == 'Feedback Form (v2)'
+        not in([Event.Region],'ap','na')
+    then
+        sendReservationEmail([Event.ComposerName], [Event.ReservationId],
+            [Event.SourceEventId], [Event.TestCommands])
+end
+
+rule "Send DFF from FMN (Asia and US)"
+    on
+        ForgetMeNot_v1
+    when
+        [Event.ComposerName] == 'Feedback Form (v2)'
+        in([Event.Region],'ap','na')
+    then
+        sendReservationEmail([Event.ComposerName], [Event.ReservationId],
+            [Event.SourceEventId], '')
+end</code></pre>
+				</section>
+
+
+				<section>
+					<h2>Rule engine<h2>
+				</section>
+
+				<section>
+					<h3>Rule engine</h3>
+					<pre>
+						<code>rule "Schedule email reminder"
+on
+    Reservation_Event_v1
+when
+    [Event.Region] == 'na'
+    [Event.ReservationState] == 1
+    not [Reservation.IsRestRef]
+then
+    scheduleEmail([Event.ReservationId], "24h reminder", ...)
+end</code></pre>
+					<span style="font-size: smaller" class="fragment">Based on NCalc: https://ncalc.codeplex.com/</span>
+				</section>
+
+				<section>
+					<h3>Rule engine - simple example</h3>
+					<pre><code>const string rules = @"rule ""Schedule email reminder""
+    // ...
+end";
+
+var engine = new RuleBase();
+engine.RegisterRules(rule);
+
+var eventData = GetEventDataFromTheQueue();
+var eventDataSouce = new ReflectionBasedDataSource(eventData);
+
+engine.RegisterDataSource("Event", eventDataSource);
+var report = engine.Execute("Reservation_Event_v1");</code></pre>
+				</section>
+
+				<section>
+					<h3>Rule engine - simple data source</h3>
+					<pre class="fragment">rule "Schedule email reminder"
+when
+    [DateTime.Now] > '2015-12-23'
+then
+    ...
+end</pre>
+<pre class="fragment"><code>engine.RegisterDataSource("DateTime", new DateTimeDataSource());</code></pre>
+<pre class="fragment"><code>public class DateTimeDataSource : IDataSource
+{
+    public object GetData(string key, IList&lt;object&gt; systemLog)
+    {
+        if (key == "now")
+            return DateTime.Now;
+        return null;
+    }
+}</code></pre>
+				</section>
+
+				<section>
+					<h3>Rule engine - advanced data source</h3>
+					<pre class="fragment">[Reservation.DateTime] > '2015-12-23'</pre>
+<pre class="fragment"><code>var ds = new ReservationDataSource("[Event.ReservationId]");
+engine.RegisterDataSource("DateTime", ds);</code></pre>
+<pre class="fragment"><code>public class ReservationDataSource : IDataSource {
+    private string _resoIdParam;
+    private IExpressionEvaluator _evaluator;
+
+    public ReservationDataSource(string resoIdParam) {
+        _resoIdParam = resoIdParam;
+    }
+
+    public object GetData(string key) {
+        var reservationId = _evaluator.Evaluate(_resoIdParam);
+        // Call reservation service or read from cache.
+    }
+
+    public void SetEvaluator(IExpressionEvaluator evaluator) {
+        _evaluator = evaluator;
+    }
+}</code></pre>
+				</section>
+
+				<section>
+					<h3>Rule engine - methods</h3>
+					<pre class="fragment">sendEmail([User.Email], "RESO - Make")</pre>
+<pre class="fragment"><code>engine.RegisterAction("sendEmail", new SendEmailAction());</code></pre>
+<pre class="fragment"><code>public class SendEmailAction : IAction
+{
+    private IExpressionEvaluator _evaluator;
+
+    public object Execute(object[] parameters)
+    {
+        var userEmail = (string)parameters[0];
+        var template = (string)paramteres[1];
+        // ...
+    }
+}</code></pre>
+				</section>
+
+				<section>
+					<h1>Questions?</h1>
+
+					<blockquote>
+					Lukasz Lysik<br />
+					llysik@opentable.com
+					</blockquote>
+				</section>
+			</div>
+		</div>
+
+		<script src="lib/js/head.min.js"></script>
+		<script src="js/reveal.js"></script>
+
+		<script>
+
+			// Full list of configuration options available at:
+			// https://github.com/hakimel/reveal.js#configuration
+			Reveal.initialize({
+				controls: true,
+				progress: true,
+				history: true,
+				center: true,
+
+				transition: 'slide', // none/fade/slide/convex/concave/zoom
+
+				// Optional reveal.js plugins
+				dependencies: [
+					{ src: 'lib/js/classList.js', condition: function() { return !document.body.classList; } },
+					{ src: 'plugin/markdown/marked.js', condition: function() { return !!document.querySelector( '[data-markdown]' ); } },
+					{ src: 'plugin/markdown/markdown.js', condition: function() { return !!document.querySelector( '[data-markdown]' ); } },
+					{ src: 'plugin/highlight/highlight.js', async: true, condition: function() { return !!document.querySelector( 'pre code' ); }, callback: function() { hljs.initHighlightingOnLoad(); } },
+					{ src: 'plugin/zoom-js/zoom.js', async: true },
+					{ src: 'plugin/notes/notes.js', async: true }
+				]
+			});
+
+		</script>
+
+	</body>
+</html>
