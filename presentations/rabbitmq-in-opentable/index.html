@@ -1,0 +1,483 @@
+<!doctype html>
+<html lang="en">
+
+	<head>
+		<meta charset="utf-8">
+
+		<title>RabbitMQ in OpenTable - Polish Developers in London</title>
+
+		<meta name="description" content="A framework for easily creating beautiful presentations using HTML">
+		<meta name="author" content="Hakim El Hattab">
+
+		<meta name="apple-mobile-web-app-capable" content="yes" />
+		<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+
+		<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, minimal-ui">
+
+		<link rel="stylesheet" href="css/reveal.css">
+		<link rel="stylesheet" href="css/theme/beige.css" id="theme">
+		<link rel="stylesheet" href="css/bootstrap.min.css">
+
+		<!-- Code syntax highlighting -->
+		<link rel="stylesheet" href="lib/css/zenburn.css">
+		<link href='https://fonts.googleapis.com/css?family=Source+Sans+Pro:200,300,400,700|Merriweather' rel='stylesheet' type='text/css' />
+
+		<!-- Printing and PDF exports -->
+		<script>
+			var link = document.createElement( 'link' );
+			link.rel = 'stylesheet';
+			link.type = 'text/css';
+			link.href = window.location.search.match( /print-pdf/gi ) ? 'css/print/pdf.css' : 'css/print/paper.css';
+			document.getElementsByTagName( 'head' )[0].appendChild( link );
+		</script>
+
+		<!--[if lt IE 9]>
+		<script src="lib/js/html5shiv.js"></script>
+		<![endif]-->
+
+		<style type="text/css">
+			body {
+				font-family: "Source Sans Pro", sans-serif;
+				background: #F3F2F1 !important;
+				color: #333333;
+				text-shadow: 0 0 0 0;
+			}
+
+			.reveal section img {
+				border:0;box-shadow:0 0 0;
+				background: transparent;
+			}
+
+			.reveal h1, .reveal h2, .reveal h3 {
+				font-family: "Source Sans Pro", sans-serif;
+				text-shadow: 0 0 0;
+				text-transform: none;
+			}
+
+			.reveal h1 {
+				font-family: "Merriweather", sans-serif;
+				font-size: 2.60em;
+			}
+
+			.reveal h2 {
+				font-family: "Merriweather", sans-serif;
+				font-size: 2em;
+			}
+
+			.reveal h3 {
+				margin-top: -30px;
+				margin-bottom: 30px;
+			}
+
+			.glyphicon {
+				font-family: 'Glyphicons Halflings' !important;
+			}
+
+			.red-slide h1,
+			.red-slide h2,
+			.red-slide h3,
+			.red-slide p {
+				color: #FFF;
+			}
+
+			.reveal .footer {
+				position: absolute;
+				bottom: 1em;
+				left: 1em;
+				font-size: 0.5em;
+			}
+
+			.nomarginp {
+				margin-top: -20px !important;
+			}
+
+			.red {
+				color: #C50000 !important;
+			}
+
+			.green {
+				color: #00A800 !important;
+			}
+			.reveal .progress span {
+				background-color: red;
+			}
+
+			.reveal a {
+				color: #FFF;
+				text-shadow: 0 0 0 0;
+			}
+
+			.reveal small {
+				font-weight: bold;
+			}
+		</style>
+	</head>
+
+	<body>
+
+		<div class="reveal">
+
+			<!-- Any section element inside of this container is displayed as a slide -->
+			<div class="slides">
+				<section data-background="#DA3743" class="red-slide">
+					<h1>RabbitMQ in OpenTable</h1>
+					<br />
+					<h3>Polish Developers in London</h3>
+					<h3>8. Oct 2015</h3>
+					<p>
+						<small>Łukasz Łysik / llysik@gmail.com / <a href="http://twitter.com/lukasz_lysik">@lukasz_lysik</a></small>
+					</p>
+				</section>
+
+				<section>
+					<img src="img/opentable_logo.png" style="border:0;box-shadow:0 0 0;background: transparent;" />
+					<p>Restaurant Reservations - Free • Instant • Confirmed</p>
+					<div class="row">
+  					<div class="col-md-6">
+							<img src="img/opentable_guest_center.png" class="fragment" />
+						</div>
+  					<div class="col-md-6">
+							<img src="img/opentable_home.png" class="fragment" />
+						</div>
+					</div>
+				</section>
+
+				<section>
+					<img src="img/opentable_logo.png" style="border:0;box-shadow:0 0 0;background: transparent;" />
+					<p>Restaurant Reservations - Free • Instant • Confirmed</p>
+					<p><span class="glyphicon glyphicon-cutlery" aria-hidden="true"></span>&nbsp;&nbsp;Over 32k restaurants worldwide</p>
+					<p><span class="glyphicon glyphicon-calendar" aria-hidden="true"></span>&nbsp;&nbsp;Over 16M reservations every month</p>
+					<p><span class="glyphicon glyphicon-pencil" aria-hidden="true"></span>&nbsp;&nbsp;Over 450k reviews per month</p>
+					<p class="fragment"><span class="glyphicon glyphicon-envelope" aria-hidden="true"></span><b>&nbsp;&nbsp;Over 20M sent emails per month</b></p>
+				</section>
+
+				<section data-background="#DA3743" class="red-slide">
+					<h2>Transactional Messaging System (TMS)</h2>
+				</section>
+
+				<section>
+					<h3>Transactional Messaging System (TMS)</h3>
+					<div class="row">
+						<div class="col-md-2"><div class="fragment" data-fragment-index="1" style="height: 180px; line-height: 180px; text-align: left; font-size: smaller">Before</div></div>
+						<div class="col-md-10"><img class="fragment" data-fragment-index="1" src="img/tms_before.png" style="height: 180px" /></div>
+					</div>
+					<div class="row">
+						<div class="col-md-2"><div class="fragment" data-fragment-index="2" style="height: 180px; line-height: 180px; text-align: left; font-size: smaller">After</div></div>
+						<div class="col-md-10"><p class="fragment" data-fragment-index="2"><img src="img/tms_after.png" style="height: 180px"/></p></div>
+					</div>
+					<aside class="notes">
+						<ul>
+							<li>We started from the monolith.</li>
+							<li>WebApi application.</li>
+							<li>Call via HTTP required quick response. (Quick acceptance)</li>
+							<li>Before: using data from database, now: using data from microservices</li>
+						</ul>
+					</aside>
+				</section>
+
+				<section>
+					<h3>Transactional Messaging System (TMS)</h3>
+					<img src="img/tms_phases.png" style="height: 480px" />
+					<aside class="notes">
+						<ul>
+							<li>Acceptance - quick.</li>
+							<li>Composition - the longest.</li>
+							<li>Sending - specialised.</li>
+						</ul>
+					</aside>
+				</section>
+
+				<section>
+					<h3>Transactional Messaging System (TMS)</h3>
+					<img src="img/tms_phases_separate.png" style="width: 100%;"/>
+				</section>
+
+				<section data-background="#DA3743" class="red-slide">
+					<h2>RabbitMQ</h2>
+				</section>
+
+				<section>
+					<h3>RabbitMQ</h3>
+					<ul>
+						<li>Message broker</li>
+						<li>Open Source</li>
+						<li>Implements AMQP standard <br /> (Advanced Messaging Queueing Protocol)</li>
+						<li>Written in Erlang</li>
+					</ul>
+					<div style="height: 40px"></div>
+					<div class="row">
+						<div class="col-md-2"></div>
+						<div class="col-md-4"><img src="img/rabbitmq_logo.png" style="height: 50px;" /></div>
+						<div class="col-md-4"><img src="img/erlang_logo_2.png" style="height: 70px;" /></div>
+					</div>
+				</section>
+
+				<section>
+					<h3>RabbitMQ</h3>
+					<img src="img/rabbitmq_management_plugin.png" style="height: 350px"/>
+					<pre class="fragment"><code class="bash">
+rabbitmq-plugins enable rabbitmq_management
+					</code></pre>
+				</section>
+
+				<section>
+					<h3>AMQP</h3>
+					<img src="img/rabbitmq_amqp_routing.png" style="width: 100%;"/>
+				</section>
+
+				<section>
+					<h3>AMQP</h3>
+					<p>Demo - RabbitMQ Simulator</p>
+				</section>
+
+				<section>
+					<h3>Connection</h3>
+					<img src="img/rabbitmq_amqp_connection.png" style="width: 90%;"/>
+					<pre class="fragment"><code class="csharp">
+var factory = new ConnectionFactory { HostName = "localhost" };
+var connection = factory.CreateConnection();  // Thread safe
+var channel = connection.CreateModel();       // Thread unsafe
+					</code></pre>
+				</section>
+
+				<section>
+					<h3>Declarations</h3>
+					<pre class="fragment"><code class="csharp">
+channel.ExchangeDeclare(
+		exchange: "logs",
+		type: "fanout");
+					</code></pre>
+					<pre class="fragment"><code class="csharp">
+channel.QueueDeclare(
+		queue: "hello",
+		durable: false,
+		exclusive: false,
+		autoDelete: false,
+		arguments: null);
+					</code></pre>
+					<pre class="fragment"><code class="csharp">
+channel.QueueBind(
+		queue: "hello",
+		exchange: "logs",
+		routingKey: "");
+					</code></pre>
+
+					<aside class="notes">
+						<ul>
+							<li>Make sure that queues exist</li>
+							<li>Optional step.</li>
+							<li>Temporary queue (example later).</li>
+						</li>
+					</aside>
+				</section>
+
+				<section>
+					<h3>Sending a message</h3>
+					<pre class="fragment"><code class="csharp">
+var message = "Hello World!";
+var body = Encoding.UTF8.GetBytes(message);
+					</code></pre>
+					<pre class="fragment"><code class="csharp">
+var properties = channel.CreateBasicProperties();
+properties.SetPersistent(true);
+properties.ContentType = "application/vnd.ticket_changed.v1+json";
+properties.Headers = new Dictionary&lt;string, object&gt;();
+properties.Headers.Add("anything", "here");
+					</code></pre>
+					<pre class="fragment"><code class="csharp">
+channel.BasicPublish(
+		exchange: "hello",
+		routingKey: "",
+		mandatory: false,
+		basicProperties: properties,
+		body: body);
+					</code></pre>
+
+					<aside class="notes">
+						<ul>
+							<li>Message properties can contain expiration, correlationId, replyTo</li>
+						</li>
+					</aside>
+				</section>
+
+				<section>
+					<h3>Receiving a message</h3>
+					<pre class="fragment"><code class="csharp">
+var consumer = new QueueingBasicConsumer(channel);
+channel.BasicConsume(queue: "hello", noAck: true, consumer: consumer);
+					</code></pre>
+					<pre class="fragment"><code class="csharp">
+while (true)
+{
+	var eventArgs = consumer.Queue.Dequeue();
+	var message = Encoding.UTF8.GetString(eventArgs.Body);
+	Console.WriteLine("Received: {0}", message);
+}
+					</code></pre>
+					<pre class="fragment"><code class="csharp">
+// eventArgs.BasicProperties
+// eventArgs.RoutingKey
+					</code></pre>
+
+					<aside class="notes">
+						<ul>
+							<li>You can write your own consumers</li>
+							<li>Default stores messages in the memory</li>
+							<li>Message is removed from the queue</li>
+						</li>
+					</aside>
+				</section>
+
+				<section>
+					<h3>Receiving a message - manual ACK</h3>
+					<pre class="fragment"><code class="csharp">
+// noAck - "no manual acks"
+channel.BasicConsume(queue: "hello", noAck: true, consumer: consumer);
+					</code></pre>
+
+					<pre class="fragment"><code class="csharp">
+// Process message
+channel.BasicAck(eventArgs.DeliveryTag, multiple: false);
+					</code></pre>
+
+					<img class="fragment" src="img/rabbitmq_unacked_messages.png" style="width: 90%;"/>
+
+					<aside class="notes">
+						<ul>
+							<li>Explain how ACK works</li>
+							<li>Explain how NACK works</li>
+							<li>Dead-letter exchange (later)</li>
+						</li>
+					</aside>
+				</section>
+
+				<section>
+					<h3>RPC</h3>
+					<img class="fragment" src="img/rabbitmq_rpc.png" style="width: 90%;" />
+					<aside class="notes">
+						<ul>
+							<li>One-way communication</li>
+						</li>
+					</aside>
+				</section>
+
+				<section>
+					<h3>RPC - client</h3>
+					<pre class="fragment"><code class="csharp">
+// Create temporary queue
+var responseQueueName = channel.QueueDeclare().QueueName;
+
+// Wait for the response
+var consumer = new QueueingBasicConsumer(channel);
+channel.BasicConsume(responseQueueName, true, consumer);
+					</code></pre>
+
+					<pre class="fragment"><code class="csharp">
+var correlationId = Guid.NewGuid().ToString();
+
+var properties = channel.CreateBasicProperties();
+properties.CorrelationId = correlationId;
+properties.ReplyTo = responseQueueName;
+
+channel.BasicPublish("hello", "", properties, body);
+					</code></pre>
+				</section>
+
+				<section>
+					<h3>RPC - server</h3>
+					<pre class="fragment"><code class="csharp">
+var eventArgs = consumer.Queue.Dequeue();
+var response = ComputeResponse(eventArgs.Body);
+					</code></pre>
+
+					<pre class="fragment"><code class="csharp">
+var replyProps = channel.CreateBasicProperties();
+replyProps.CorrelationId = eventArgs.BasicProperties.CorrelationId;
+					</code></pre>
+
+					<pre class="fragment"><code class="csharp">
+channel.BasicPublish(
+		exchange: "",
+		routingKey: props.ReplyTo,
+		basicProperties: replyProps,
+		body: response);
+					</code></pre>
+
+					<aside class="notes">
+						<ul>
+							<li>We publish directly to the queue</li>
+							<li>I like it because it's so straightforward. Nothing is hidden.</li>
+						</li>
+					</aside>
+				</section>
+
+				<section>
+					<h3>Time-To-Live Extensions</h3>
+					<img class="fragment" src="img/rabbitmq_tms_sender_queues.png" style="width: 60%;" />
+					<div style="height: 50px;"></div>
+					<img class="fragment" src="img/rabbitmq_tms_retry_queues.png" style="width: 60%;" />
+				</section>
+
+				<section>
+					<h4>Slides TODO</h4>
+					<ul>
+						<li>DONE Connection vs Channel (one connection, multiple channels)</li>
+						<li>DONE Declare Queue/Excange</li>
+						<li>DONE Queue properties/exchange properties</li>
+						<li>DONE Simple send/receive (Message properties)</li>
+						<li>DONE Manual ACK/REJECT (mention that we do it in TMS)</li>
+						<li>Routing + handling unrouted messages</li>
+						<li>Worker queues</li>
+						<li>DONE RPC</li>
+						<li>DONE TTL + DLX</li>
+						<li>Prepare RabbitMQ simulator</li>
+						<li>Prepare demos</li>
+						<li>Find fullscreen key</li>
+					</ul>
+				</section>
+
+				<section>
+					<h3>Questions?</h3>
+					<blockquote>
+					Łukasz Łysik<br>
+					llysik@opentable.com
+					</blockquote>
+				</section>
+			</div>
+
+			<div class='footer'>
+				<img src="img/opentable_logo_small.png" style="border:0;background:transparent;box-shadow:0 0 0;width:18%;float:left" /><span style="float:left;padding-left:10px;color:red;">@lukasz_lysik</span>
+		  </div>
+
+		</div>
+
+		<script src="lib/js/head.min.js"></script>
+		<script src="js/reveal.js"></script>
+
+		<script>
+
+			// Full list of configuration options available at:
+			// https://github.com/hakimel/reveal.js#configuration
+			Reveal.initialize({
+				controls: true,
+				progress: true,
+				history: true,
+				center: true,
+				slideNumber: true,
+				transition: 'slide', // none/fade/slide/convex/concave/zoom
+
+				// Optional reveal.js plugins
+				dependencies: [
+					{ src: 'lib/js/classList.js', condition: function() { return !document.body.classList; } },
+					{ src: 'plugin/markdown/marked.js', condition: function() { return !!document.querySelector( '[data-markdown]' ); } },
+					{ src: 'plugin/markdown/markdown.js', condition: function() { return !!document.querySelector( '[data-markdown]' ); } },
+					{ src: 'plugin/highlight/highlight.js', async: true, condition: function() { return !!document.querySelector( 'pre code' ); }, callback: function() { hljs.initHighlightingOnLoad(); } },
+					{ src: 'plugin/zoom-js/zoom.js', async: true },
+					{ src: 'plugin/notes/notes.js', async: true }
+				]
+			});
+
+		</script>
+
+	</body>
+</html>
