@@ -231,6 +231,16 @@ rabbitmq-plugins enable rabbitmq_management
 				</section>
 
 				<section>
+					<h3>Queues in TMS</h3>
+					<img class="fragment" src="img/rabbitmq_tms_queues_before.png" style="width: 90%;" />
+				</section>
+
+				<section>
+					<h3>Queues in TMS</h3>
+					<img src="img/rabbitmq_tms_queues_after.png" style="height: 450px;" />
+				</section>
+
+				<section>
 					<h3>Connection</h3>
 					<img src="img/rabbitmq_amqp_connection.png" style="width: 90%;"/>
 					<pre class="fragment"><code class="csharp">
@@ -419,29 +429,52 @@ channel.BasicPublish(
 				</section>
 
 				<section>
-					<h4>Slides TODO</h4>
-					<ul>
-						<li>DONE Connection vs Channel (one connection, multiple channels)</li>
-						<li>DONE Declare Queue/Excange</li>
-						<li>DONE Queue properties/exchange properties</li>
-						<li>DONE Simple send/receive (Message properties)</li>
-						<li>DONE Manual ACK/REJECT (mention that we do it in TMS)</li>
-						<li>Routing + handling unrouted messages</li>
-						<li>Worker queues</li>
-						<li>DONE RPC</li>
-						<li>DONE TTL + DLX</li>
-						<li>Prepare RabbitMQ simulator</li>
-						<li>Prepare demos</li>
-						<li>Find fullscreen key</li>
-					</ul>
+					<h3>Time-To-Live Extensions</h3>
+					<pre class="fragment"><code class="csharp">
+// Per-Queue Message TTL
+var args = new Dictionary&lt;string, object&gt;();
+args.Add("x-message-ttl", 60000);
+channel.QueueDeclare("myqueue", false, false, false, args);
+					</code></pre>
+					<pre class="fragment"><code class="csharp">
+// Per-Message TTL
+var properties = new BasicProperties();
+properties.Expiration = "60000";
+channel.BasicPublish("my-exchange", "routing-key", properties, body);
+					</code></pre>
+				</section>
+
+				<section>
+					<h3>Dead Letter Exchange</h3>
+					<pre class="fragment"><code class="csharp">
+// Per-Queue Message TTL
+var args = new Dictionary&lt;string, object&gt;();
+args.Add("x-message-ttl", 60000);
+args.Add("x-dead-letter-exchange", "some.exchange.name");
+args.Add("x-dead-letter-routing-key", "some-routing-key");
+channel.QueueDeclare("myqueue", false, false, false, args);
+					</code></pre>
 				</section>
 
 				<section data-background="#DA3743" class="red-slide">
+					<h2>Demos</h2>
+					<aside class="notes">
+						<ul>
+							<li>Worker queues</li>
+							<li>Durable vs. temporary queue</li>
+							<li>Topic routing</li>
+							<li>RPC</li>
+							<li>Delayed delivery</li>
+						</ul>
+					</aside>
+				</section>
+				
+				<section data-background="#DA3743" class="red-slide">
 					<h3>Questions?</h3>
-					<blockquote>
+					<i>
 					Łukasz Łysik<br>
 					llysik@opentable.com
-					</blockquote>
+					</i>
 				</section>
 			</div>
 
