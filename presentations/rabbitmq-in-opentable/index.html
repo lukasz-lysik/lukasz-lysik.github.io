@@ -223,6 +223,7 @@ rabbitmq-plugins enable rabbitmq_management
 				<section>
 					<h3>AMQP</h3>
 					<img src="img/rabbitmq_amqp_routing.png" style="width: 100%;"/>
+					<p style="font-size: small">Source: https://www.rabbitmq.com/tutorials/amqp-concepts.html</p>
 				</section>
 
 				<section>
@@ -243,6 +244,7 @@ rabbitmq-plugins enable rabbitmq_management
 				<section>
 					<h3>Connection</h3>
 					<img src="img/rabbitmq_amqp_connection.png" style="width: 90%;"/>
+					<p style="font-size: small">Source: "RabbitMQ in Action", Jason J. W. Williams, Alvaro Videla</p>
 					<pre class="fragment"><code class="csharp">
 var factory = new ConnectionFactory { HostName = "localhost" };
 var connection = factory.CreateConnection();  // Thread safe
@@ -364,6 +366,7 @@ channel.BasicAck(eventArgs.DeliveryTag, multiple: false);
 				<section>
 					<h3>RPC</h3>
 					<img class="fragment" src="img/rabbitmq_rpc.png" style="width: 90%;" />
+					<p class="fragment" style="font-size: small">Source: https://www.rabbitmq.com/tutorials/tutorial-six-dotnet.html</p>
 					<aside class="notes">
 						<ul>
 							<li>One-way communication</li>
@@ -468,7 +471,7 @@ channel.QueueDeclare("myqueue", false, false, false, args);
 						</ul>
 					</aside>
 				</section>
-				
+
 				<section data-background="#DA3743" class="red-slide">
 					<h3>Questions?</h3>
 					<i>
