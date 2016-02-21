@@ -1,0 +1,273 @@
+---
+layout: post
+status: publish
+published: true
+title: Tracking and Visualizing Dependencies Between Projects in TeamCity
+author_login: admin
+author_email: llysik@gmail.com
+excerpt: "Let's
+  imagine, that we have an application which consists of many components. Each component
+  consists of many projects (Visual Studio projects), e.g. Data Access, Data Model,
+  Web, Test, etc. Each project can reference projects in other components. The hierarchy
+  of dependencies can be deep and wide.\r\n\r\nTo speed up the build process, we would
+  like to know which project was changed during the last commit (check-in) and build
+  only this project along with projects one level higher in the hierarchy (projects
+  that reference this one). There is no need to compile project that are lower in
+  the hierarchy, neither the projects that are two or move levels above.\r\n\r\nThe
+  first step to implement this would be to maintain a file which contains list of
+  all the projects in the repository with their dependencies. This file could be used
+  by build scripts to figure out which projects should be build.\r\n\r\nIn this article
+  I'll show how to use Team City to track project dependencies. As an addition I'd
+  like to visualize the dependency tree and display it in Team City. I'll not focus
+  on the other parts, like deciding which projects to run (it will be covered in the
+  next article)."
+wordpress_id: 472
+wordpress_url: http://programmer.lysik.pl/?p=472
+date: '2013-11-10 16:30:21 +0000'
+date_gmt: '2013-11-10 15:30:21 +0000'
+categories:
+- Continous Integration
+tags:
+- team-city
+- msbuild
+- graphviz
+- C#
+- git
+comments: []
+---
+<p><i>Source code for this article: <a href="https://github.com/lukasz-lysik/teamcity-dependencies-tree" title="https://github.com/lukasz-lysik/teamcity-dependencies-tree" target="_blank">https://github.com/lukasz-lysik/teamcity-dependencies-tree</a>.</i></p>
+<p>Let's imagine, that we have an application which consists of many components. Each component consists of many projects (Visual Studio projects), e.g. Data Access, Data Model, Web, Test, etc. Each project can reference projects in other components. The hierarchy of dependencies can be deep and wide.</p>
+<p>To speed up the build process, we would like to know which project was changed during the last commit (check-in) and build only this project along with projects one level higher in the hierarchy (projects that reference this one). There is no need to compile project that are lower in the hierarchy, neither the projects that are two or move levels above.</p>
+<p>The first step to implement this would be to maintain a file which contains list of all the projects in the repository with their dependencies. This file could be used by build scripts to figure out which projects should be build.</p>
+<p>In this article I'll show how to use Team City to track project dependencies. As an addition I'd like to visualize the dependency tree and display it in Team City. I'll not focus on the other parts, like deciding which projects to run (it will be covered in the next article).</p>
+<p>a href="/assets/tree2.png"><img src="/assets/tree2.png" alt="Project Dependencies in Team City" width="709" height="503" /></a> Final Result: Project Dependencies in Team City.</p>
+<p><a id="more"></a><a id="more-472"></a></p>
+<h3>Problem Statement</h3></p>
+<ol>
+<li>In a repository (I'll use Git) we have many Visual Studio projects (only C# projects).</li>
+<li>Build server stores all binary files in one folder. All the projects reference assemblies in this folder (there is no project-to-project reference). After a project is built, the assemblies are copied to this folder. <i>This assumption will be important when we will be getting references from *.csproj files</i>.</li>
+<li>We want to generate a file which will contain project dependency tree.</li>
+<li>After a developer adds or removes a reference, we want Team City to update the file.</li>
+<li>We want to use the dependencies file to generate a graphical representation of the tree.</li><br />
+</ol></p>
+<h3>Solution Draft</h3></p>
+<p>We would like to have a separate build configuration which will run on each check-in. This configuration will create file with dependencies. The table below presents the problems we want to solve and possible solutions:</p>
+
+<table>
+<thead>
+<tr>
+<th>Problem</th>
+<th>Solution</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Setup TeamCity to track changes in *.cproj files only.</td>
+<td>Use VCS build trigger filter.</td>
+</tr>
+<tr>
+<td>Check-out *.csproj only (there is no need to check-out full repository).</td>
+<td>Unsolved yet. <i>I've done quick research but I couldn't find a clean way to check-out files with specified extension</i>.
+  We will check-out whole repository.</td>
+</tr>
+<tr>
+<td>Make the tasks be run by Team City.</td>
+<td>I'll create two MSBuild tasks: <i>BuildDependencies</i> and <i>DrawDependencies</i>.</td>
+</tr>
+<tr>
+<td>Parse *.csproj files</td>
+<td>I'll use <i>Project</i> class from <i>Microsoft.Build.Evaluation</i> namespace.
+  I've got the idea from <a href="http://stackoverflow.com/questions/4649989/reading-a-csproj-file-in-c-sharp/4650212#4650212"
+  title="this Stack Overflow answer">this Stack Overflow answer</a>, which suggests
+  using <i>Microsoft.Build.Engine.Project</i> class (which is deprecated).</td>
+</tr>
+<tr>
+<td>Draw a tree.</td>
+<td>I'll use <a href="http://www.graphviz.org/" title="Graphviz">Graphviz</a>.
+  It has easy to use language, which requires specifying list of edges, rather than full tree.</td>
+</tr>
+</tbody>
+</table>
+<h3>Detailed Solution</h3></p>
+<h4>BuildDependencies task</h4></p>
+
+{% highlight csharp %}
+public class BuildDependencies : Task
+{
+  public string InputFolder { get; set; }
+  public string OutputFile { get; set; }
+
+  public override bool Execute()
+  {
+    var references = new XElement("Projects");
+    foreach (var file in Directory.GetFiles(InputFolder, "*.csproj",
+      SearchOption.AllDirectories))
+    {
+        references.Add(ParseProject(file));
+    }
+
+    references.Save(OutputFile);
+    return true;
+  }
+
+  private XElement ParseProject(string projectFilePath)
+  {
+    var project = new Project(projectFilePath);
+    var assemblyName = project.GetProperty("AssemblyName");
+
+    var output = new XElement("Project");
+    output.Add(new XAttribute("name", assemblyName.EvaluatedValue));
+    output.Add(new XAttribute("path", projectFilePath));
+
+    foreach (var item in project.GetItems("Reference"))
+    {
+      if (item.EvaluatedInclude.StartsWith("System")
+        || item.EvaluatedInclude.StartsWith("Microsoft"))
+        continue;
+
+      output.Add(new XElement("Reference",
+        new XAttribute("name", item.EvaluatedInclude)));
+    }
+
+    return output;
+  }
+}
+{% endhighlight %}
+
+<ul>
+<li>Lines 2-3: I've defined two properties. <i>InputFolder</i> is the folder name which we will scan searching for *.csproj files.</li>
+<li>Line 6-18: The only method which should be overridden when creating custom MSBuild tasks is <i>Execute</i>. This method contains the code which is executed when the task is run. In our case we simply iterate through all the *.csproj files within the directory pointed by <i>InputFolder</i> property.</li>
+<li>Line 22: Use <i>Project</i> class. It is a wrapper for *.csproj files. </li>
+<li>Line 23: Get project's assembly name</li>
+<li>Lines 25-27: Create XML element "Project" and specify it's attributes: <i>name</i> and <i>path</i></li>
+<li>Lines: 29-37: Iterate though "Reference" nodes in *.csproj file. As I stated before, we don't have project-to-project references so we can skip "ProjectReference" elements. We also skip assemblies which starts with "System" or "Microsoft".</li><br />
+</ul></p>
+<p>As a result of this task execution I get the following XML file:</p>
+
+{% highlight xml %}
+<?xml version="1.0" encoding="utf-8"?>
+<Projects>
+  <Project name="Component1.ProjectA"
+           path="F:\Component1\Component1.ProjectA\Component1.ProjectA.csproj">
+    <Reference name="Component1.ProjectB" />
+  </Project>
+  <Project name="Component1.ProjectB"
+           path="F:\Component1\Component1.ProjectB\Component1.ProjectB.csproj">
+    <Reference name="Component1.ProjectC" />
+    <Reference name="Component2.ProjectA" />
+  </Project>
+  <Project name="Component1.ProjectC"
+           path="F:\Component1\Component1.ProjectC\Component1.ProjectC.csproj" />
+  <Project name="Component2.ProjectA"
+           path="F:\Component2\Component2.ProjectA\Component2.ProjectA.csproj">
+    <Reference name="Component2.ProjectB" />
+  </Project>
+  <Project name="Component2.ProjectB"
+           path="F:\Component2\Component2.ProjectB\Component2.ProjectB.csproj" />
+</Projects>
+{% endhighlight %}
+
+<h4>DrawDependencies task</h4></p>
+<p>The tasks should take previously generated XML file with dependencies and produce *.gv file which will be later used by Graphviz.</p>
+
+{% highlight csharp %}
+public class DrawDependencies : Task
+{
+  public string InputFile { get; set; }
+  public string OutputFile { get; set; }
+
+  public override bool Execute()
+  {
+    var dependenciesXml = XDocument.Load(InputFile);
+    var outputDot = new StringBuilder();
+    outputDot.AppendLine("digraph dependencies {");
+    outputDot.AppendLine("\tnode [style=\"rounded,filled\", shape=box, color=lightblue2];");
+
+    foreach (var project in dependenciesXml.Descendants("Project"))
+    {
+      var name = project.Attribute("name").Value;
+
+      foreach (var dependency in project.Descendants("Reference"))
+      {
+        outputDot.AppendLine(string.Format("\t\"{0}\" -> \"{1}\";", name, dependency.Attribute("name").Value));
+      }
+    }
+
+    outputDot.AppendLine("}");
+
+    using (var file = new StreamWriter(OutputFile))
+    {
+      file.WriteLine(outputDot.ToString());
+    }
+
+    return true;
+  }
+}
+{% endhighlight %}
+
+<p>Most of the code above doesn't need any explanation. However, there are part specific to Graphviz language, which should be described:</p>
+<ul>
+<li>Line 12: Graphviz file header.</li>
+<li>Line 13: Set the default graph appearance: filled, rounded rectangles with lighblue fill.</li>
+<li>Line 21: Attach edge in the form: <i>"Source Node" -> "Destination Node";</i>.</li><br />
+</ul></p>
+<p>File produced by the above task:</p>
+
+{% highlight css %}
+digraph dependencies {
+  node [style="rounded,filled", shape=box, color=lightblue2];
+  "Component1.ProjectA" -> "Component1.ProjectB";
+  "Component1.ProjectB" -> "Component1.ProjectC";
+  "Component1.ProjectB" -> "Component2.ProjectA";
+  "Component2.ProjectA" -> "Component2.ProjectB";
+}
+{% endhighlight %}
+
+<h4>Build Script</h4></p>
+<p>Now that we have all needed tasks, let's create MSBuild script:</p>
+
+{% highlight xml %}
+<Project xmlns="http://schemas.microsoft.com/developer/msbuild/2003"
+  DefaultTargets="Build" ToolsVersion="4.0">
+  <PropertyGroup>
+    <CheckoutDir>F:\TeamCityCheckoutDir</CheckoutDir>
+    <OutputDir>F:\Output</OutputDir>
+    <GraphvizPath>"C:\Program Files\Graphviz2.34\bin\dot.exe"</GraphvizPath>
+  </PropertyGroup>
+  <UsingTask TaskName="GetProjectsDependencies.BuildDependencies"
+    AssemblyFile="Tasks\GetProjectsDependencies.dll"/>
+  <UsingTask TaskName="GetProjectsDependencies.DrawDependencies"
+    AssemblyFile="Tasks\GetProjectsDependencies.dll"/>
+  <Target Name="Build">
+    <BuildDependencies InputFolder="$(CheckoutDir)" OutputFile="$(OutputDir)\dependencies.xml" />
+    <DrawDependencies InputFile="$(OutputDir)\dependencies.xml" OutputFile="$(OutputDir)\dependencies.gv" />
+    <Exec Command="$(GraphvizPath) -Tpng $(OutputDir)\dependencies.gv -o $(OutputDir)\dependencies.png" />
+  </Target>
+</Project>
+{% endhighlight %}
+
+<p>In the <i>PropertyGroup</i> section we define: directory where Team City checks-out repository, output directory, where XML, GV and PNG files should be placed, and path to Graphviz. Also, we need to include our tasks in the build script (using <i>UsingTask</i>).</p>
+<p>Our build script have only 3 steps:</p>
+<ol>
+<li>BuildDependencies - which scans all *.csproj files and produces <i>dependencies.xml</i> file.</li>
+<li>DrawDependencies - which produces <i>dependencies.gv</i> file</li>
+<li>Exec command which compiles <i>dependencies.gv</i> into graphical representation: <i>dependencies.png</i></li><br />
+</ol></p>
+<h3>Final Team City Configuration</h3></p>
+<ol>
+<li>Create build configuration. Create VCS trigger.</li>
+<li>Add one build step which runs prepared MSBuild script.</li>
+<li>In order to see the the tree in Team City we will need to add single artifact which ofcourse will be our dependencies.png file.<br />
+<a href="/assets/artifacts.png"><img src="/assets/artifacts.png" alt="artifacts" width="574" height="99" /></a><br />
+</li></p>
+<li>Use Report Tabs to add new tab<br />
+<a href="/assets/report-tab.png"><img src="/assets/report-tab.png" alt="report-tab" width="639" height="326" /></a><br />
+</li><br />
+</ol></p>
+<p>Final result:</p>
+<p><a href="/assets/tree2.png"><img src="/assets/tree2.png" alt="Project Dependencies in Team City" width="709" /></a> Final Result: Project Dependencies in Team City</p>
+<p>Let's now change project dependencies. Wait for the build to finish:</p>
+<p><a href="/assets/building.png"><img src="/assets/building.png" alt="building" width="800" /></a></p>
+<p>And see updated tree:</p>
+<p><a href="/assets/tree3.png"><img src="/assets/tree3.png" alt="tree3" width="703" /></a></p>
+<p>I hope you'll find this article useful. </p>

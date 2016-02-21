@@ -1,0 +1,120 @@
+---
+layout: post
+status: publish
+published: true
+title: PowerShell Cheat Sheet
+author_login: admin
+author_email: llysik@gmail.com
+wordpress_id: 213
+wordpress_url: http://programmer.lysik.pl/?p=213
+date: '2013-04-05 23:12:40 +0100'
+date_gmt: '2013-04-05 21:12:40 +0100'
+categories:
+- PowerShell
+tags:
+- power-shell
+- beginner
+comments: []
+---
+<h2>Variables</h2>
+
+{% highlight powershell %}
+$x = 1
+New-Variable -Name x -Value 12
+Get-Variable x -valueonly
+Set-Variable -Name x -Value 34
+Clear-Variable -Name x
+Remove-Variable -Name x
+
+# Print the value
+$x
+# which is an equivalent of:
+Write-Host $x
+
+# Get the type
+$x.GetType()
+# Strongly typed
+[int]$x = 2
+
+# Comparisons
+$x -eq 20
+$x -gt 20
+$x -lt 20
+{% endhighlight %}
+
+References:
+<ul>
+<li><a href="http://technet.microsoft.com/en-us/magazine/ff642464.aspx">PowerShell Data Types</a></li>
+<li><a href="http://ss64.com/ps/syntax-compare.html">Comparison Operators</a></li>
+</ul>
+
+<h2>Strings</h2>
+
+{% highlight powershell %}
+$str = 'Text 1'
+$str2 = "Text 2"
+
+# Newline
+
+"First line`nSecond line"
+$multiline = @"
+  Multiline text
+  Anouther line
+  "@
+
+# Single quotes
+
+$multiline = @'
+  Multiline text
+  Anouther line
+'@
+
+# Variables in text
+$x = 1
+$y = 1
+"Text with variable $x and $y"
+
+# Formatting text
+[String]::Format("Some text with {0}", $x)
+
+# Short version
+"Some text {0} and {1}" -f $x, $y
+{% endhighlight %}
+
+<h2>Arrays and Hash Tables</h2>
+
+{% highlight powershell %}
+arr = "one", "two", "three"
+$arr[0]
+$arr[1]
+$arr1 = @()
+$arr1 = @("one", "two")
+$arr1.Count
+$arr2 = 1..10
+$arr2 -contains 5
+$arr2 -notcontains 10
+$ht = @{"Name" = "Tom",
+        "Surname" = "Cruise"}
+$ht["Name"]
+$ht."Name"
+$key = "Name"
+$ht.$key
+$ht.Remove("Name")
+$ht.Contains("Name")
+$ht.ContainsValue("Tom")
+$ht.Keys
+$ht.Values
+{% endhighlight %}
+
+<h2>Built-in variables</h2>
+
+{% highlight powershell %}
+$true
+$false
+$NULL
+# Current directory
+$pwd
+# Current object
+$_
+Get-ChildItem | Where-Object {$_.Name -like "*.cs"}
+{% endhighlight %}

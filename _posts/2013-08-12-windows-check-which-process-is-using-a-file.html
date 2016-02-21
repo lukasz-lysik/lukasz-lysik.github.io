@@ -1,0 +1,29 @@
+---
+layout: post
+status: publish
+published: true
+title: Windows - Check Which Process is Using a File
+author_login: admin
+author_email: llysik@gmail.com
+wordpress_id: 428
+wordpress_url: http://programmer.lysik.pl/?p=428
+date: '2013-08-12 12:56:30 +0100'
+date_gmt: '2013-08-12 11:56:30 +0100'
+categories:
+- Windows
+tags:
+- windows-internals
+comments: []
+---
+<p>In this post I'll show how to check which process lock a file. Probably most
+  of us saw this annoying error message "File in Use" while deleting or
+  renaming a file.</p>
+
+<p>This problem can be solved using
+  <a href="http://technet.microsoft.com/en-gb/sysinternals/bb896653.aspx">Process
+    Explorer</a>. There is the option which allow to find all the handles for
+    specified file:<br />
+
+{% highlight text %}
+Find > Find Handle or DLL...
+{% endhighlight %}

@@ -1,0 +1,59 @@
+---
+layout: post
+status: publish
+published: true
+title: Random DateTime value in C#
+author: "Łukasz Łysik"
+author_login: admin
+author_email: llysik@gmail.com
+excerpt: "Recently I needed a function that return random date. I haven't found anything
+  that meet my needs. I've finally found <a href=\"http://tawani.blogspot.com/2007/09/how-to-get-random-date-in-c.html\">the
+  article</a> from Tawani's blog which presents rather long function. However,
+  I like to keep things simple, so I decided to write my own."
+wordpress_id: 7
+wordpress_url: http://programmer.lysik.pl/?p=7
+date: '2010-08-13 14:22:40 +0100'
+date_gmt: '2010-08-13 14:22:40 +0100'
+categories:
+- C#
+- Algorithms
+tags:
+- C# DateTime
+comments: []
+---
+<p>Recently I needed a function that return random date. I haven't found anything
+that meet my needs. I've finally found <a href="http://tawani.blogspot.com/2007/09/how-to-get-random-date-in-c.html">the article</a>
+from Tawani's blog which presents rather long function. However, I like to keep
+things simple, so I decided to write my own.<br />
+
+<a id="more"></a><a id="more-7"></a><br />
+What are the requirements for the function:</p>
+<ol>
+<li>It has to be as short and simple as possible.</li>
+<li>It has to return random date from the given range [dateFrom, dateTo).</li>
+<li>The accuracy of one second is sufficient.</li>
+</ol></p>
+<p>
+This is the function I've written:
+</p>
+
+{% highlight csharp %}
+DateTime RandomDate(Random rand, DateTime dateFrom, DateTime dateTo)
+{
+    DateTime randDate;
+
+    // Get random day
+    int daySpan = (int)dateTo.Subtract(dateFrom).TotalDays;
+    int randDays = rand.Next(0, daySpan + 1);
+    randDate = dateFrom.AddDays(randDays);
+
+    // Get random second
+    int secSpan = Math.Min(24*60*60,(int)dateTo.Subtract(randDate).TotalSeconds);
+    int randSecs = rand.Next(0, secSpan + 1);
+    return randDate.AddSeconds(randSecs);
+}
+{% endhighlight %}
+
+<p>The idea is simple: first it adds random day to the start date, and then adds
+random seconds to this. It uses `Math.Min` to protect from jumping out of the
+range while adding secound.</p>

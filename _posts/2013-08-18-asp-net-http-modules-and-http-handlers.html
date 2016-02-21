@@ -1,0 +1,161 @@
+---
+layout: post
+status: publish
+published: true
+title: ASP.NET HTTP Modules and HTTP Handlers
+author_login: admin
+author_email: llysik@gmail.com
+wordpress_id: 447
+wordpress_url: http://programmer.lysik.pl/?p=447
+date: '2013-08-18 16:26:58 +0100'
+date_gmt: '2013-08-18 15:26:58 +0100'
+categories:
+- ASP.NET
+tags:
+- http-handler
+- http-module
+- asp.net
+- iis7
+comments: []
+---
+<p>ASP.NET offers two methods for extending standard processing behavior: HTTP modules and HTTP handlers.</p>
+
+<h2>HTTP Modules</h2>
+
+<p>An HTTP module is an assembly that is called on every request made to your
+  application. HTTP modules are called as part of the ASP.NET request pipeline
+  and have access to life cycle events throughout the request
+  (<a href="http://msdn.microsoft.com/en-us/library/zec9k340%28v=vs.85%29.aspx">source</a>).</p>
+
+<p>There are two steps required to create custom HTTP module:</p>
+
+<ol>
+<li>Create class which implements [cci]IHTTPModule[/cci] interface</li>
+<li>Register your module in web.config</li>
+</ol>
+
+{% highlight csharp %}
+public interface IHttpModule
+{
+  void Init(HttpApplication context);
+  void Dispose();
+}
+{% endhighlight %}
+
+<p>Each time a request is made to your application, [cci]Init[/cci] method is
+  being called. Having a reference to HTTPApplication you can subscribe to the
+  application's event, like BeginRequest and EndRequest.</p>
+
+{% highlight csharp %}
+public class HelloWorldModule : IHttpModule
+{
+  public void Init(HttpApplication application)
+  {
+    application.BeginRequest += this.Application_BeginRequest;
+    application.EndRequest += this.Application_EndRequest;
+  }
+
+  private void Application_BeginRequest(Object source, EventArgs e)
+  {
+    HttpApplication application = (HttpApplication)source;
+    HttpContext context = application.Context;
+    context.Response.Write("HelloWorldModule: Beginning of Request");
+  }
+
+  private void Application_EndRequest(Object source, EventArgs e)
+  {
+    HttpApplication application = (HttpApplication)source;
+    HttpContext context = application.Context;
+    context.Response.Write("HelloWorldModule: End of Request");
+  }
+
+  public void Dispose() {}
+}
+{% endhighlight %}
+
+<p>To register, you need to add the following in [cci]Web.config[/cci]:</p>
+
+{% highlight xml %}
+<configuration>
+  <system.web>
+    <httpModules>
+      <add name="HelloWorldModule" type="HelloWorldModule"/>
+    </httpModules>
+  </system.web>
+</configuration>
+{% endhighlight %}
+
+<p>This module will cause each page returned from the server to be decorated
+  with a header and a footer.</p>
+<p>ASP.NET provides built-in modules, which are a part of standard processing.
+  There modules are listed in the framework's [cci]Web.config[/cci] placed in
+  [cci]c:\Windows\Microsoft.NET\Framework\v4.0.30319\[/cci] folder.</p>
+
+{% highlight xml %}
+<httpModules>
+  <add name="OutputCache" type="System.Web.Caching.OutputCacheModule" />
+  <add name="Session" type="System.Web.SessionState.SessionStateModule" />
+  <add name="WindowsAuthentication" type="System.Web.Security.WindowsAuthenticationModule" />
+  <add name="FormsAuthentication" type="System.Web.Security.FormsAuthenticationModule" />
+  <add name="PassportAuthentication" type="System.Web.Security.PassportAuthenticationModule" />
+  <add name="RoleManager" type="System.Web.Security.RoleManagerModule" />
+  <add name="UrlAuthorization" type="System.Web.Security.UrlAuthorizationModule" />
+  <add name="FileAuthorization" type="System.Web.Security.FileAuthorizationModule" />
+  <add name="AnonymousIdentification" type="System.Web.Security.AnonymousIdentificationModule" />
+  <add name="Profile" type="System.Web.Profile.ProfileModule" />
+  <add name="ErrorHandlerModule" type="System.Web.Mobile.ErrorHandlerModule, System.Web.Mobile, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a" />
+  <add name="ServiceModel" type="System.ServiceModel.Activation.HttpModule, System.ServiceModel.Activation, Version=4.0.0.0, Culture=neutral, PublicKeyToken=31bf3856ad364e35" />
+  <add name="UrlRoutingModule-4.0" type="System.Web.Routing.UrlRoutingModule" />
+  <add name="ScriptModule-4.0" type="System.Web.Handlers.ScriptModule, System.Web.Extensions, Version=4.0.0.0, Culture=neutral, PublicKeyToken=31bf3856ad364e35"/>
+</httpModules>
+{% endhighlight %}
+
+<p>[cci]HTTPApplication[/cci] class has a property [cci]Modules[/cci] which
+  contains all the loaded modules. To see them just set a breakpoint inside
+  [cci]Global.asax[/cci] and investigate Watch window.</p>
+
+<p><img src="/assets/Modules.AllKeys.png" width="563" height="449" class="alignnone" /></p>
+
+<h2>HTTP Handlers</h2></p>
+
+<p>An ASP.NET HTTP handler is the process that runs in response to a request
+  made to an ASP.NET Web application. It is slightly different than a module.
+  Handlers are sometimes referred to as "endpoints". A handler can be associated
+  with file extension. E.g. file extension [cci].aspx[/cci] is assigned to
+  [cci]System.Web.UI.PageHandlerFactory[/cci] class, which handles standard
+  ASP.NET page processing. In
+  <a href="http://stackoverflow.com/questions/6449132/http-handler-vs-http-module">this Stack Overflow question</a>
+  there is a good two-sentence explanation of the difference between HTTP Module
+  and HTTP Handler: <i>HttpHandler is where the request train is headed.
+    HttpModule is a station along the way</i>. So when we request ASPX page all
+    the registered modules will be initialized and only one HTTP handler will be run.</p>
+
+<p>Creating custom HTTP handler is easy as it was with HTTP modules. You should
+  implement [cci]IHttpHandler[/cci] interface and register handler in [cci]Web.config[/cci] class.</p>
+
+<p>To see which HTTP handler is currently being run in the current request let's
+  see standard ASP.NET and ASP.NET MVC application. We need to set a breakpoint in
+  code-behind class for the first and in a controller for the second. There result
+  are as below.</p>
+
+<p><img src="/assets/HttpContext.Current.CurrentHandler.png"
+  width="800" /></p>
+
+<p><img src="/assets/HttpContext.CurrentHandler.png" width="800" /></p>
+
+<p>The second of these is [cci]MvcHandler[/cci], but the first shows that our
+  handler is actually our ASP.NET page. Let's look at [cci]WebForm1[/cci] class.
+  It inherits from [cci]System.Web.UI.Page[/cci] which inherits from
+  [cci]TemplateControl[/cci] and implements [cci]IHttpHandler[/cci] interface.
+  It means that each ASP.NET page is actually a HTTP handler itself. But how the
+  process know about our handler, while the framework's [cci]Web.config[/cci]
+  file contains:</p>
+
+{% highlight xml %}
+<add path="*.aspx" verb="*"
+     type="System.Web.UI.PageHandlerFactory"
+     validate="True" />
+{% endhighlight %}
+
+<p>The [cci]PageHandlerFactory[/cci] class creates an instance of our
+  [cci]WebForm1[/cci] class based on the request's URL. </p>

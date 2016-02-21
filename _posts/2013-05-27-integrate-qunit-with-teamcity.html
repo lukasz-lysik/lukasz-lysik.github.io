@@ -1,0 +1,234 @@
+---
+layout: post
+status: publish
+published: true
+title: Integrate QUnit with TeamCity
+author_login: admin
+author_email: llysik@gmail.com
+excerpt: "In this post I'll present how to integrate <a href=\"http://qunitjs.com/\">QUnit</a>
+  test runner with <a href=\"http://www.jetbrains.com/teamcity/\">Team
+  City</a>, popular Continous Integration platform. Although, the example project
+  is written in C#, the description is not language spacific. What is more, QUnit
+  test runner is only one step in CI process, which can be used as separate.\r\n\r\n"
+wordpress_id: 386
+wordpress_url: http://programmer.lysik.pl/?p=386
+date: '2013-05-27 22:49:18 +0100'
+date_gmt: '2013-05-27 21:49:18 +0100'
+categories:
+- QUnit
+- Unit Tests
+- Continous Integration
+tags:
+- qunit
+- team-city
+comments: []
+---
+<p>In this post I'll present how to integrate <a href="http://qunitjs.com/">QUnit</a>
+  test runner with <a href="http://www.jetbrains.com/teamcity/">Team City</a>,
+  popular Continous Integration platform. Although, the example project is
+  written in C#, the description is not language spacific. What is more, QUnit
+  test runner is only one step in CI process, which can be used as separate.</p>
+
+<h2>Creating base project (optional)</h2>
+Let's start with creating simple ASP.NET MVC 4 project. This step is optional,
+but I'd like this example to be more comrehensive and to the build would consist
+of 3 steps:</p>
+<ol>
+<li>Build project</li>
+<li>Run C# tests</li>
+<li>Run JavaScript tests</li>
+</ol>
+
+<p>I've created 2 projects: QUnitTestableApp (ASP.NET MVC) and QUnitTestableApp.Tests
+  (Test Project). The first project contains one controller: </p>
+
+{% highlight csharp %}
+public class ProductController : Controller
+{
+    public ActionResult Index()
+    {
+        return View("ProductsList");
+    }
+}
+{% endhighlight %}
+
+<p>The second contains simple unit test:</p>
+
+{% highlight csharp %}
+[TestClass]
+public class ProductControllerTests
+{
+    [TestMethod]
+    public void IndexTest()
+    {
+        var controller = new ProductController();
+        var result = controller.Index() as ViewResult;
+        Assert.AreEqual("ProductsList", result.ViewName);
+    }
+}
+{% endhighlight %}
+
+<p>Let's run the test and check that it works.</p>
+
+<h2>Create JavaScript code and tests</h2>
+
+<p>Now it is time to create JavaScript code that will be tested. Let's create
+  class Greeter. I'm using <a href="http://www.typescriptlang.org/">TypeScript</a>
+  for that. If you are not familiar with it, you can translate the TypeScript code
+  to pure JavaScript on their <a href="http://www.typescriptlang.org/Playground/">Playground page</a>.</p>
+
+<p>Greeter class (Greeter.ts):</p>
+
+{% highlight typescript %}
+module GreeterModule {
+    export class Greeter {
+        private name: string;
+        constructor(name: string) {
+            this.name = name;
+        }
+        Greet() {
+            return "Hello, " + this.name;
+        }
+    }
+}
+{% endhighlight %}
+
+<p>Test (Tests\GreeterTests.ts):</p>
+
+{% highlight typescript %}
+QUnit.test("Simple test", function () {
+    var greeter = new GreeterModule.Greeter("Lukasz");
+    var result = greeter.Greet();
+    QUnit.equal(result, "Hello, Lukasz");
+});
+{% endhighlight %}
+
+<p>And test runner (Tests\TestRunner.html):</p>
+
+{% highlight html %}
+<!DOCTYPE html>
+<html xmlns="http://www.w3.org/1999/xhtml">
+<head>
+    <title></title>
+<link rel="stylesheet" href="http://code.jquery.com/qunit/qunit-1.11.0.css">
+    <script src="http://code.jquery.com/qunit/qunit-1.11.0.js"></script>
+    <script src="../Greeter.js"></script>
+    <script src="GreeterTests.js"></script>
+</head>
+<body>
+<div id="qunit"></div>
+<div id="qunit-fixture"></div>
+</body>
+</html>
+{% endhighlight %}
+
+<p>Let's open TestRunner.html file in browser and check that test passes.</p>
+
+<h2>Create build steps in TeamCity</h2>
+
+<p>Now we finally start to configure TeamCity build. Let's create new project
+  and build configuration. For the purpose of this example we won't need VCS,
+  so in "VCS checkout mode" select "Do not checkout files automatically".</p>
+
+<p>Let's create build step. We have to specify two settings to make it work:</p>
+
+<ul>
+<li>Runner type: Visual Studio (sln)</li>
+<li>Solution file path: <i>this should be set to point to our solution file</i></li><br />
+</ul>
+
+<a href="http://programmer.lysik.pl/wp-content/uploads/2013/05/build-step-1.png">
+  <img src="http://programmer.lysik.pl/wp-content/uploads/2013/05/build-step-1.png"
+  alt="build-step-1" width="724" height="425" /></a>.
+
+<p>Then let's create test step:</p>
+
+<ul>
+<li>Runner type: MSTest</li>
+<li>Path to MSTest.exe: MSTest 2012</li>
+<li>List assembly files / Edit assemblies include list: <i>Select path to QUnitTestableApp.Tests assembly.</i></li>
+</ul>
+
+<a href="http://programmer.lysik.pl/wp-content/uploads/2013/05/build-step-21.png">
+  <img src="http://programmer.lysik.pl/wp-content/uploads/2013/05/build-step-21.png"
+  alt="build-step-2" width="757" height="347" /></a></p>
+
+<p>Now we can test our configuration by running the build. We should see one
+  test run successfully:</p>
+
+<p><a href="http://programmer.lysik.pl/wp-content/uploads/2013/05/test-run-1.png">
+  <img src="http://programmer.lysik.pl/wp-content/uploads/2013/05/test-run-1.png"
+  width="376" height="138" /></a></p>
+
+<h2>Add QUnit test step</h2>
+<p>For this we will need:</p>
+
+<ol>
+<li><a href="http://phantomjs.org/">PhantomJS</a></li>
+<li>run-qunit.js file (it is contained in PhantomJS's zip file in examples folder)</li>
+<li>qunit.teamcity.js file (more about it below)</li>
+</ol>
+
+<p>First of all we will need to make our TestRunner.html file being able to be
+  parsed by TeamCity. There is
+  <a href="http://joseoncode.com/2011/08/09/running-qunit-tests-in-teamcity/">
+    nice short article</a> explaining this. You can copy the code from there and
+    create qunit.teamcity.js file (the file can be found in the repo for this
+    post - link at the end). What just need to inculde this file in our
+    TestRunner.html:</p>
+
+{% highlight html %}
+<script src="../Vendor/qunit.teamcity.js"></script>
+{% endhighlight %}
+
+<p>When we open our TestRunner.html in the browser we can see additional
+  messages printed out to the console:</p>
+
+<p><a href="http://programmer.lysik.pl/wp-content/uploads/2013/05/console.png">
+  <img src="http://programmer.lysik.pl/wp-content/uploads/2013/05/console.png"
+  alt="console" width="520" height="93" class="aligncenter size-full wp-image-407" /></a></p>
+
+<p>This text will be used by TeamCity to indicate that our run was successful.</p>
+
+<p>Then let's add last build step:</p>
+
+<ol>
+<li>Runner type: Command Line</li>
+<li>Execute step: Even if some of previous steps failed - <i>We want to test
+  JavaScript code even if our C# code fails</i></li>
+<li>Working directory: <i>Directory with TestRunner.html file</i></li>
+<li>Run: Executable with parameters</li>
+<li>Command executable: <i>Path to phantomjs.exe</i></li>
+<li>Command parameters: run-qunit.js TestRunner.html. <i>Make sure that the path
+  to run-qunit.js is correct or the file is inside Working directory specified
+  above.</i></li>
+</ol>
+
+<p>Now let's test this configuration by running build again. You should see two
+  tests run: one for our C# code and one for JavaScript:<br />
+<a href="http://programmer.lysik.pl/wp-content/uploads/2013/05/test-run-2.png">
+  <img src="http://programmer.lysik.pl/wp-content/uploads/2013/05/test-run-2.png"
+  alt="test-run-2" width="369" height="135" /></a></p>
+
+<p>When we enter Tests page we can see that JavaScript tests are treated equally
+  to C# ones.</p>
+<p><a href="http://programmer.lysik.pl/wp-content/uploads/2013/05/tests-1.png">
+  <img src="http://programmer.lysik.pl/wp-content/uploads/2013/05/tests-1.png"
+  alt="tests-1" width="586" height="209" /></a></p>
+
+<p>Let's break something and see if TeamCity will respond. The easiest way
+  would be to change assert in JavaScript test.</p>
+
+{% highlight js %}
+...
+QUnit.equal(result, "Hello, L");
+{% endhighlight %}
+
+<p>And the result is as expected:</p>
+<p><a href="http://programmer.lysik.pl/wp-content/uploads/2013/05/build-failed.png">
+  <img src="http://programmer.lysik.pl/wp-content/uploads/2013/05/build-failed.png"
+  alt="build-failed" width="579" height="357" /></a></p>
+
+<p>Source code of the example:
+  <a href="https://github.com/lukasz-lysik/qunit-testable-app.git">
+    https://github.com/lukasz-lysik/qunit-testable-app.git</a>.</p>

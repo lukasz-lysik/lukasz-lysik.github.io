@@ -1,0 +1,32 @@
+---
+layout: post
+status: publish
+published: true
+title: Crystal Reports - Failed to retrive data from the database.
+author_login: admin
+author_email: llysik@gmail.com
+wordpress_id: 48
+wordpress_url: http://programmer.lysik.pl/?p=48
+date: '2010-09-02 15:37:01 +0100'
+date_gmt: '2010-09-02 13:37:01 +0100'
+categories:
+- SQL Server
+tags:
+- crystal reports
+- sql server
+- error
+comments: []
+---
+<p>When an error occurs during generation a report, the error message doesn't say much:</p>
+<p><em>Failed to retrieve data from the database.<br />
+Details:  [Database Vendor Code: <strong>295</strong> ]</em></p>
+<p>How to retrive the error message? You have to select from sysmessages table in Sql Server database. In this example:</p>
+
+{% highlight sql %}
+SELECT * FROM master.dbo.sysmessages WHERE error = 295
+{% endhighlight %}
+
+<p>The query gives the error description:</p>
+<p style="text-align: center;"><img class="aligncenter size-full wp-image-60"
+  style="border: 1px solid black;" title="error-message" src="/assets/error-message.png"
+  alt="" width="560" height="45" /></p>

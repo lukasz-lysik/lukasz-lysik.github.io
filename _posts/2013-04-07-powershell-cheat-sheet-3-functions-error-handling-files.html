@@ -1,0 +1,128 @@
+---
+layout: post
+status: publish
+published: true
+title: PowerShell Cheat Sheet (3) - Functions, Error Handling, Files
+author_login: admin
+author_email: llysik@gmail.com
+wordpress_id: 249
+wordpress_url: http://programmer.lysik.pl/?p=249
+date: '2013-04-07 19:31:10 +0100'
+date_gmt: '2013-04-07 17:31:10 +0100'
+categories:
+- PowerShell
+tags:
+- power-shell
+- beginner
+comments: []
+---
+<h2>Functions</h2>
+
+{% highlight powershell %}
+# Defining
+function Get-Length($text)
+{
+  Write-Hist $text.Length
+}
+
+# Executing
+Get-Length "Lukasz"
+
+# Passing reference
+function Change-Value([ref] $x)
+{
+  $x = 5;
+}
+
+# Executing
+$x = 1
+Change-Value ([ref]$x)
+
+# Functions with pipeline
+function Proc-Pipeline()
+{
+  begin {}
+  process {}
+  end {}
+}
+
+# Filters
+filter Filter-Files
+{
+  if($_.Name -like "*.cs")
+  {
+    return $_
+  }
+}
+
+# Support for switches
+function Get-Help ()
+{
+  param([switch]$x, [switch]$y)
+  if($x.IsPresent)
+  {
+  }
+}
+{% endhighlight %}
+
+<h2>Error Handling</h2>
+
+{% highlight powershell %}
+# Trap
+function With-Trap($x, $y)
+{
+  $z = $x/$y
+  trap [System.DivideByZeroException]
+  {
+  }
+  trap
+  {
+    Write-Host $_.ErrorID
+    Write-Host $_.Exception.Message
+    continue
+    # break
+  }
+}
+{% endhighlight %}
+
+<h2>Files</h2>
+
+{% highlight powershell %}
+# Getting the content
+$content = Get-Content "file.txt"
+
+# Getting lines
+$content[0]
+$content[1]
+
+# Joining
+$content_as_string = [String]::Join($sep, $content)
+
+# Wildcard support
+$content = Get-Content "*.txt"
+
+# Writing to file (with overwrite)
+Set-Content -Value "Text to file" -Path "file.txt"
+
+# Append to file
+Add-Content -Value "Some more text" -Path "file.txt"
+
+# Remove file
+Remove-Item "file.txt"
+
+# CSV files
+Export-Csv
+$header = "Col1", "Col2"
+$content = Import-Csv "File.csv" -Header $header
+
+# XML files - write
+$content = "<html><body>Body text</body></html>"
+$content | Out-File "file.xml"
+
+# XML files - read
+$content = New-Object xml
+$content.Load("file.xml")
+
+# Read data
+$body_text = (@(content.html.body)[0]).Clone()
+{% endhighlight %}

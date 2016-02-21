@@ -1,0 +1,116 @@
+---
+layout: post
+status: publish
+published: true
+title: Moq - how to mock a protected method of an internal class with no parameter-less
+  constructor
+excerpt: I this article I'll show how to solve some advanced problems when using Moq.
+author_login: admin
+author_email: llysik@gmail.com
+wordpress_id: 323
+wordpress_url: http://programmer.lysik.pl/?p=323
+date: '2013-04-18 13:19:21 +0100'
+date_gmt: '2013-04-18 11:19:21 +0100'
+categories:
+- Unit Tests
+tags:
+- unit-tests
+- moq
+- mocks
+comments: []
+---
+<h2>Problem statement</h2>
+
+I have a class which:</p>
+<ol>
+<li>Is internal in a separate assembly from tests (InternalsVisibleTo is set, so the test project sees the class).</li>
+<li>Has no parameter-less constructor.</li>
+<li>Has a protected method which I want to mock (only this method, I want to use the others).</li>
+</ol>
+
+{% highlight csharp %}
+internal class ClassToTest {
+  public ClassToTest(int x, int y) {
+  }
+  public void MethodToTest() {
+    // ...
+    var b = MethodToMock(1);
+    // ...
+  }
+  protected string MethodToMock(int a) {
+  }
+}
+{% endhighlight %}
+
+<p>There are several problems to solve here:</p>
+<ol>
+<li>How to mock internal class?</li>
+<li>How to mock a class with no parameter-less constructor</li>
+<li>How to mock only some of the methods in a class?</li>
+<li>How to mock protected method?</li>
+</ol>
+
+<h2>Solution</h2>
+
+<h3>How to mock internal class?</h3>
+<p>The solution I've found in <a href="http://www.blackwasp.co.uk/MoqInternals.aspx">this article.</a>
+  Basically, when the class is internal you should make it visible to the test
+  project by applying assembly attribute <code>InternalsVisibleTo</code>. But Moq
+  is one another assembly that can't see what is inside tested project. So I need
+  to apply another attribute:</p>
+
+{% highlight csharp %}
+[assembly: InternalsVisibleTo("DynamicProxyGenAssembly2")]
+// or in case of signed assemblies
+[assembly: InternalsVisibleTo("DynamicProxyGenAssembly2," +
+  "PublicKey=0024000004800000940000000602000000240000525" +
+  "341310004000001000100c547cac37abd99c8db225ef2f6c8a360" +
+  "2f3b3606cc9891605d02baa56104f4cfc0734aa39b93bf7852f7d" +
+  "9266654753cc297e7d2edfe0bac1cdcf9f717241550e0a7b19119" +
+  "5b7667bb4f64bcb8e2121380fd1d9d46ad2d92d2d15605093924c" +
+  "ceaf74c4861eff62abf69b9291ed0a340e113be11e6a7d3113e92" +
+  "484cf7045cc7")]
+{% endhighlight %}
+
+<p>Now I can mock an internal class from within a test project.</p>
+
+<h3>How to mock a class with no parameter-less constructor</h3>
+
+<p>The answer lies in the Mock class constructor (and in
+  <a href="http://stackoverflow.com/a/5263019/166740">this StackOverflow answer</a>.)</p>
+
+<p>In case of my contructor I need to pass the parameter to the constructor of Mock class:</p>
+
+{% highlight csharp %}
+var myMock = new Mock<ClassToTest>(
+     MockBehavior.Default,
+     2 /* 1st parameter of ClassToTest constructor */,
+     4 /* 2nd parameter of ClassToTest constructor */);
+{% endhighlight %}
+
+<h3>How to mock only some of the methods in a class?</h3>
+<p>This is also known as "Partial Mock". This is described in the
+  <a href="https://code.google.com/p/moq/wiki/QuickStart">official QuickStart
+    document of Moq.</a> in the section "Customizing Mock Behavior". What I need
+    is just to add:</p>
+
+{% highlight csharp %}
+myMock.CallBase = true;
+{% endhighlight %}
+
+<h3>How to mock protected method?</h3>
+
+<p>One more time QuickStart document comes to the rescue
+  (<a href="https://code.google.com/p/moq/wiki/QuickStart#Miscellaneous"
+  title="section "Miscellaneous""></a>). Moq doesn't provide intellisense for
+  protected methods. I need to:</p>
+
+{% highlight csharp %}
+// Add using statement
+using Moq.Protected;
+
+// Mock the method
+myMock.Protected().Setup<string>("MethodToMock",
+        ItExpr.IsAny<int>())
+        .Returns("myReturnValue");
+{% endhighlight %}

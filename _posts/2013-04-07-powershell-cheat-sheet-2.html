@@ -1,0 +1,128 @@
+---
+layout: post
+status: publish
+published: true
+title: PowerShell Cheat Sheet (2) - Conditions, Loops, Script Blocks
+author_login: admin
+author_email: llysik@gmail.com
+wordpress_id: 241
+wordpress_url: http://programmer.lysik.pl/?p=241
+date: '2013-04-07 18:57:05 +0100'
+date_gmt: '2013-04-07 16:57:05 +0100'
+categories:
+- PowerShell
+tags:
+- power-shell
+- beginner
+comments: []
+---
+<h2>Conditional statements</h2>
+
+{% highlight powershell %}
+# If/then
+if ($x -eq 1)
+{
+}
+else
+{
+}
+#Switch
+$x = 1
+switch($x)
+{
+  1 {"One"}
+  "1" {"One - string"}
+  2 {"Two"; break}
+  default {"Default"}
+}
+switch -casesensitive ("Lukasz")
+{
+  "lukasz" {"lysik"}
+  "Lukasz" {"Lysik"}
+}
+switch -Wildcard ("Lukasz")
+{
+  "L*" {"Lysik"}
+}
+{% endhighlight %}
+
+<h2>Loops</h2>
+
+{% highlight powershell %}
+# While
+while($x -le 1)
+{
+}
+
+# Do while
+do {
+} while($x -le 1)
+
+# Do until
+do {
+} until($x -eq 1)
+
+# For
+for($x=0; $x -lt 10; $x++)
+{
+}
+
+# Foreach
+$numbers = 10,20,30,40
+foreach($n in $numbers)
+{
+}
+
+# Labels with loops
+:level1 foreach(...)
+{
+  foreach(...)
+  {
+    break level1
+    # continuer outerloop
+  }
+}
+{% endhighlight %}
+
+<h2>Script blocks</h2>
+
+{% highlight powershell %}
+# Assign to variable
+$script = {Clear-Host; "Hello World!"}
+
+# Executing
+&amp; $script
+
+# Executing script block
+&amp; {"Hello World!"}
+
+# Passing parametes to script blocks
+$script = {
+  $x = $args[0]
+  $y = $args[1]
+}
+
+# Executing with parameters
+&amp; $script 1 2
+
+# Passing parametes to script blocks (alternative)
+$script = {
+  param($x,$y)
+}
+
+# Executing
+&amp; $script -x 1 -y 2
+# Default values
+$script = {
+  param($x, $y = 1)
+}
+
+# Using script block with pipelines
+$script = {
+  begin { Write-Host "Start" }
+  process {
+    Write-Host $_
+  }
+  end { Write-Host "End" }
+}
+{% endhighlight %}

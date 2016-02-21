@@ -1,0 +1,122 @@
+---
+layout: post
+status: publish
+published: true
+title: Inside Areas Registration (How does RegisterAllAreas work in ASP.NET MVC 4)
+author_login: admin
+author_email: llysik@gmail.com
+wordpress_id: 431
+wordpress_url: http://programmer.lysik.pl/?p=431
+date: '2013-08-17 21:03:31 +0100'
+date_gmt: '2013-08-17 20:03:31 +0100'
+categories:
+- ASP.NET
+tags:
+- asp.net-mvc-4
+comments: []
+---
+<p>Recently I've faced the problem with registering the areas. I added new area
+  to my application, but it didn't seem to work. In this article I'll explain how
+  does the areas registration work under the hood and then how I solved my problem.</p>
+
+<h3>How to create areas?</h3>
+
+<p>Using Visual Studio it is pretty easy. Just select the project in Solution Explorer,
+  right click and select <span class='highlight'><code class='text'>Add > Area...</code></span>. The folder structure is created
+  automatically.</p>
+
+<p>Each area has its own class which inherits from <span class='highlight'><code class='text'>AreaRegistration</code></span> class. The
+  purpose of this class is to register new routes (you add new controllers which
+  will be available using new addresses - the framework has to know about that).
+  In this model each area registers its own routes rather than all routes from all
+  areas are registered in one place.</p>
+
+{% highlight csharp %}
+public class Area1AreaRegistration : AreaRegistration
+{
+  public override string AreaName
+  {
+    get { return "Area1"; }
+  }
+
+  public override void RegisterArea(AreaRegistrationContext context)
+  {
+    context.MapRoute(
+      "Area1_default",
+      "Area1/{controller}/{action}/{id}",
+      new { action = "Index", id = UrlParameter.Optional });
+  }
+}
+{% endhighlight %}
+
+<p>But shouldn't there be some entry point where areas can plug themselves in? There
+  is. If you open <span class='highlight'><code class='text'>Global.asax</code></span> you will notice that there is one line of
+  code being automatically added by Visual Studio.</p>
+
+{% highlight csharp %}
+public class MvcApplication : System.Web.HttpApplication
+{
+  protected void Application_Start()
+  {
+    AreaRegistration.RegisterAllAreas();
+    ...
+  }
+}
+{% endhighlight %}
+
+<h3>How does RegisterAllAreas work?</h3>
+
+<p>Let's look in the source code of <span class='highlight'><code class='text'>AreaRegistration</code></span> class. For this
+  we will need to use a decompiler. I recommend my favorite
+  <a href="http://www.jetbrains.com/decompiler/">dotPeek from JetBrains</a>. It's
+  100% free and it has the same shortcuts as ReSharper.</p>
+
+<p>The method we are interested in is static <span class='highlight'><code class='text'>RegisterAllAreas</code></span> (there are three but actually only one does whole job). </p>
+
+{% highlight csharp %}
+  internal static void RegisterAllAreas(
+                           RouteCollection routes,
+                           IBuildManager buildManager, object state)
+  {
+    foreach (Type type in TypeCacheUtil.GetFilteredTypesFromAssemblies(
+          "MVC-AreaRegistrationTypeCache.xml",
+          new Predicate<Type>(AreaRegistration.IsAreaRegistrationType),
+          buildManager))
+      ((AreaRegistration)Activator.CreateInstance(type))
+        .CreateContextAndRegister(routes, state);
+  }
+{% endhighlight %}
+
+<p>It looks like a work it does is pretty straightforward. First of all it uses
+  <span class='highlight'><code class='text'>TypeCacheUtil</code></span> to find assemblies which contain classes that inherit
+  from <span class='highlight'><code class='text'>AreaRegistration</code></span> class. The condition is checked in
+  <span class='highlight'><code class='text'>AreaRegistration.IsAreaRegistrationType</code></span> (you can also notice that
+  the class should have parameterless constructor).</p>
+
+{% highlight csharp %}
+private static bool IsAreaRegistrationType(Type type)
+{
+  if (typeof (AreaRegistration).IsAssignableFrom(type))
+    return type.GetConstructor(Type.EmptyTypes) != (ConstructorInfo) null;
+  else
+    return false;
+}
+{% endhighlight %}
+
+<p>What is interesting, the classes which are found are stored in
+  <span class='highlight'><code class='text'>MVC-AreaRegistrationTypeCache.xml</code></span> file. The file is located at
+  <span class='highlight'><code class='text'>c:\Windows\Microsoft.NET\Framework\v4.0.30319\Temporary ASP.NET Files\NAME_OF_YOUR_APP\<random>\<random>\UserCache\</code></span>
+    (source: <a href="http://stackoverflow.com/questions/9032087/mvc-controllertypecache-xml-in-mvc">MVC-ControllerTypeCache.xml in MVC</a>). </p>
+
+<p>The next step of the <span class='highlight'><code class='text'>RegisterAllAreas</code></span> method is to create an instance
+  of each of these classes and call <span class='highlight'><code class='text'>RegisterArea</code></span> on them. This is the
+  method that we overriden in our area and registered its routes.</p>
+
+<h3>Solving the problem</h3>
+
+<p>Let's go back to my initial problem. To remind you: the application wasn't
+  registering routes from my new area. The only suspicious place is the xml file
+  with cached <span class='highlight'><code class='text'>AreaRegistration</code></span> classes. Caching is very useful when it
+  comes to performance tuning of an application, but in the same way it can bring
+  many problems. It turned out that my new AreaRegistration class wasn't listed
+  there. So I've deleted this file, restarted application and the problem was solved.</p>

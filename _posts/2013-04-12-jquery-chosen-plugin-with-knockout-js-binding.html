@@ -1,0 +1,49 @@
+---
+layout: post
+status: publish
+published: true
+title: jQuery Chosen plugin with Knockout.js binding
+excerpt: Recently I faced the problem with using <a href="http://knockoutjs.com/">Knockout.js</a>
+  binding with <a href="http://davidwalsh.name/jquery-chosen">jQuery Chosen plugin</a>.</p>
+author_login: admin
+author_email: llysik@gmail.com
+wordpress_id: 298
+wordpress_url: http://programmer.lysik.pl/?p=298
+date: '2013-04-12 22:58:07 +0100'
+date_gmt: '2013-04-12 20:58:07 +0100'
+categories:
+- Knockout.js
+tags:
+- jquery
+- knockout-js
+comments:
+- id: 561
+  author: Becky
+  author_email: becky@metricslice.com
+  author_url: ''
+  date: '2013-05-09 02:50:24 +0100'
+  date_gmt: '2013-05-09 01:50:24 +0100'
+  content: Thanks, this really helped me out!
+---
+<p>
+  <img alt="jquery-chosen" src="/assets/jquery-chosen.png" width="264" height="118" style="float: right"/>
+
+<p>Recently I faced the problem with using <a href="http://knockoutjs.com/">Knockout.js</a>
+  binding with <a href="http://davidwalsh.name/jquery-chosen">jQuery Chosen plugin</a>.</p>
+
+<p>There was a problem when changing the selection of multiple choice control -
+  the view model was not being updated. I've found a help with this StackOverflow
+  question:&nbsp;<a href="http://stackoverflow.com/questions/11369333/knockout-js-and-chosen-multiselect-not-working">
+    Knockout JS and Chosen multiselect not working.</a></p>
+
+<p>I was struggling with the solution for a while but finally I've found the source
+  of my problem. When binding view model to single-choice select, you should use
+
+   {% highlight js %}data-bind="value: selectedValue"{% endhighlight %}
+
+   while for multiple-choice you should use
+
+   {% highlight js %}data-bind="selectedOptions: selectedOptions"{% endhighlight %}
+
+   binding.</p></p>
+<p><a href="http://jsfiddle.net/lukaszlysik/cppg3/24/">Here</a> is the complete example.</p>

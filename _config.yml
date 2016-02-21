@@ -1,0 +1,20 @@
+# Welcome to Jekyll!
+#
+# This config file is meant for settings that affect your whole blog, values
+# which you are expected to set up once and rarely need to edit after that.
+# For technical reasons, this file is *NOT* reloaded automatically when you use
+# 'jekyll serve'. If you change this file, please restart the server process.
+
+# Site settings
+title: Łukasz Łysik
+email: llysik at gmail.com
+description: > # this means to ignore newlines until "baseurl:"
+  C# and Node.js developer. Interested in distributed systems, SOA and message-based systems.
+baseurl: "" # the subpath of your site, e.g. /blog
+url: "http://lukasz-lysik.github.io" # the base hostname & protocol for your site
+twitter_username: lukasz_lysik
+github_username:  lukasz-lysik
+
+# Build settings
+markdown: kramdown
+exclude: ['presentations']

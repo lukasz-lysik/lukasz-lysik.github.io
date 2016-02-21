@@ -1,0 +1,170 @@
+---
+layout: post
+status: publish
+published: true
+title: JSON.Net and DateTimeOffset
+author: "Łukasz Łysik"
+excerpt:
+categories:
+- C#
+tags:
+- DateTime
+---
+In this article I'll explore different setting for DateTime serialization in
+JSON.Net.
+
+Serialization and deserialization of `DateTime` may be tricky. When using JSON.Net
+there are three setting that control how the `DateTime` is formatted.
+
+  * `DateFormatHandling`
+  * `DateParseHandling`
+  * `DateTimeZoneHandling`
+
+## DateFormatHandling
+
+This setting indicates which date format would be used: ISO or Microsoft.
+
+{% highlight csharp %}
+[Test]
+public void IsoDateFormatTest()
+{
+    var date = new DateTimeOffset(2001, 3, 4, 14, 40, 21, TimeSpan.FromHours(4));
+
+    var settings = new JsonSerializerSettings
+    {
+        DateFormatHandling = DateFormatHandling.IsoDateFormat
+    };
+
+    var result = JsonConvert.SerializeObject(date, settings);
+
+    result.Should().Be("\"2001-03-04T14:40:21+04:00\"");
+}
+
+[Test]
+public void MicrosoftDateFormatTest()
+{
+    var date = new DateTimeOffset(2001, 3, 4, 14, 40, 21, TimeSpan.FromHours(4));
+
+    var settings = new JsonSerializerSettings
+    {
+        DateFormatHandling = DateFormatHandling.MicrosoftDateFormat
+    };
+
+    var result = JsonConvert.SerializeObject(date, settings);
+
+    result.Should().Be("\"\\/Date(983702421000+0400)\\/\"");
+}
+{% endhighlight %}
+
+## DateParseHandling
+
+This settings decides what would be a type of a result of deserialization of a
+datetime: `string`, `DateTime` or `DateTimeOffset`.
+
+{% highlight csharp %}
+[Test]
+public void NoneDateParseHandling()
+{
+    var settings = new JsonSerializerSettings
+    {
+        DateParseHandling = DateParseHandling.None
+    };
+
+    var result = JsonConvert.DeserializeObject("\"2001-03-04T14:40:21+04:00\"", settings);
+    result.Should().BeOfType<string>();
+}
+
+[Test]
+public void DateTimeDateParseHandling()
+{
+    var settings = new JsonSerializerSettings
+    {
+        DateParseHandling = DateParseHandling.DateTime
+    };
+
+    var result = JsonConvert.DeserializeObject("\"2001-03-04T14:40:21+04:00\"", settings);
+    result.Should().BeOfType<DateTime>();
+}
+
+[Test]
+public void DateTimeOffsetDateParseHandling()
+{
+    var settings = new JsonSerializerSettings
+    {
+        DateParseHandling = DateParseHandling.DateTimeOffset
+    };
+
+    var result = JsonConvert.DeserializeObject("\"2001-03-04T14:40:21+04:00\"", settings);
+    result.Should().BeOfType<DateTimeOffset>();
+}
+{% endhighlight %}
+
+## DateTimeZoneHandling
+
+This setting controls how `DateTime` and `DateTimeOffset` are deserialised. In case
+of `DateTime` it indicates what would be the value of `Kind` property. However, for
+the `DateTimeOffset` this setting is not that important, since `DateTimeOffset`
+changes kind of the date depending of the property you use. In each tests all
+the assertions are the same:
+
+{% highlight csharp %}
+[Test]
+public void LocalTimeZoneHandlingTest()
+{
+    var settings = new JsonSerializerSettings
+    {
+        DateParseHandling = DateParseHandling.DateTimeOffset,
+        DateTimeZoneHandling = DateTimeZoneHandling.Local
+    };
+
+    var result = JsonConvert.DeserializeObject("\"2001-03-04T14:40:21+04:00\"", settings);
+    ((DateTimeOffset)result).DateTime.Kind.Should().Be(DateTimeKind.Unspecified);
+    ((DateTimeOffset)result).LocalDateTime.Kind.Should().Be(DateTimeKind.Local);
+    ((DateTimeOffset)result).UtcDateTime.Kind.Should().Be(DateTimeKind.Utc);
+}
+
+[Test]
+public void UtcTimeZoneHandlingTest()
+{
+    var settings = new JsonSerializerSettings
+    {
+        DateParseHandling = DateParseHandling.DateTimeOffset,
+        DateTimeZoneHandling = DateTimeZoneHandling.Utc
+    };
+
+    var result = JsonConvert.DeserializeObject("\"2001-03-04T14:40:21+04:00\"", settings);
+    ((DateTimeOffset)result).DateTime.Kind.Should().Be(DateTimeKind.Unspecified);
+    ((DateTimeOffset)result).LocalDateTime.Kind.Should().Be(DateTimeKind.Local);
+    ((DateTimeOffset)result).UtcDateTime.Kind.Should().Be(DateTimeKind.Utc);
+}
+
+[Test]
+public void UnspecifiedTimeZoneHandlingTest()
+{
+    var settings = new JsonSerializerSettings
+    {
+        DateParseHandling = DateParseHandling.DateTimeOffset,
+        DateTimeZoneHandling = DateTimeZoneHandling.Unspecified
+    };
+
+    var result = JsonConvert.DeserializeObject("\"2001-03-04T14:40:21+04:00\"", settings);
+    ((DateTimeOffset)result).DateTime.Kind.Should().Be(DateTimeKind.Unspecified);
+    ((DateTimeOffset)result).LocalDateTime.Kind.Should().Be(DateTimeKind.Local);
+    ((DateTimeOffset)result).UtcDateTime.Kind.Should().Be(DateTimeKind.Utc);
+}
+
+[Test]
+public void RoundtripKindTimeZoneHandlingTest()
+{
+    var settings = new JsonSerializerSettings
+    {
+        DateParseHandling = DateParseHandling.DateTimeOffset,
+        DateTimeZoneHandling = DateTimeZoneHandling.RoundtripKind
+    };
+
+    var result = JsonConvert.DeserializeObject("\"2001-03-04T14:40:21+04:00\"", settings);
+    ((DateTimeOffset)result).DateTime.Kind.Should().Be(DateTimeKind.Unspecified);
+    ((DateTimeOffset)result).LocalDateTime.Kind.Should().Be(DateTimeKind.Local);
+    ((DateTimeOffset)result).UtcDateTime.Kind.Should().Be(DateTimeKind.Utc);
+}
+{% endhighlight %}
