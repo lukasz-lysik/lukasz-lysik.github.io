@@ -17,4 +17,4 @@ github_username:  lukasz-lysik
 
 # Build settings
 markdown: kramdown
-exclude: ['presentations']
+exclude: ['presentations/rabbitmq-in-opentable/node_modules']
