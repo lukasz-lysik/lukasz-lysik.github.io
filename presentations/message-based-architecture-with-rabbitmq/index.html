@@ -354,7 +354,7 @@ while (true)
 					<h3>Receiving a message - manual ACK</h3>
 					<pre class="fragment"><code class="csharp">
 // noAck - "no manual acks"
-channel.BasicConsume(queue: "hello", noAck: true, consumer: consumer);
+channel.BasicConsume(queue: "hello", noAck: false, consumer: consumer);
 					</code></pre>
 
 					<pre class="fragment"><code class="csharp">
